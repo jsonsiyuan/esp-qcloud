@@ -1,0 +1,39 @@
+menu "ESP32 qcloud mqtt demo Configuration"
+
+config QCLOUD_WiFi_SSID
+    string "WiFi SSID"
+    default "HUAWEI001"
+    help
+        wifi ssid
+
+config QCLOUD_WiFi_PASSWORD
+    string "WiFi PASSWORD"
+    default "espressif"
+    help
+        wifi password
+        
+config QCLOUD_PROUDCT_ID
+    string "PRODUCT ID"
+    default "PA543HC32B"
+    help
+        product ID
+
+config QCLOUD_DEVICE_NAME
+    string "DEVICE NAME"
+    default "test_dev_01"
+    help
+        device name
+
+config QCLOUD_CERT_FILENAME
+    string "CERT FILENAME"
+    default "test_dev_01_cert.crt"
+    help
+        CERT FILENAME
+
+config QCLOUD_KEY_FILENAME
+    string "KEY FILENAME"
+    default "test_dev_01_private.key"
+    help
+        KEY FILENAME
+
+endmenu
