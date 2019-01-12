@@ -2,13 +2,13 @@ menu "ESP32 qcloud mqtt demo Configuration"
 
 config QCLOUD_WiFi_SSID
     string "WiFi SSID"
-    default "HUAWEI001"
+    default "TEST_WIFI_SSID"
     help
         wifi ssid
 
 config QCLOUD_WiFi_PASSWORD
     string "WiFi PASSWORD"
-    default "espressif"
+    default "TEST_WIFI_PASSWORD"
     help
         wifi password
         
@@ -29,6 +29,12 @@ config QCLOUD_CERT_FILENAME
     default "test_dev_01_cert.crt"
     help
         CERT FILENAME
+
+config QCLOUD_DEVICE_SECRET
+    string "DEVICE SECRET"
+    default "test_dev_secret.crt"
+    help
+        DEVICE SECRET
 
 config QCLOUD_KEY_FILENAME
     string "KEY FILENAME"
