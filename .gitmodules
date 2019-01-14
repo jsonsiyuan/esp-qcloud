@@ -1,6 +1,3 @@
-[submodule "components/qcloud-iot-sdk-embedded-c"]
-        path = components/qcloud/qcloud-iot-sdk-embedded-c
-        url = https://github.com/tencentyun/qcloud-iot-sdk-embedded-c.git
-[submodule "esp-idf"]
-	path = esp-idf
-	url = https://github.com/espressif/esp-idf.git
+[submodule "qcloud-iot-sdk-embedded-c"]
+	path = qcloud-iot-sdk-embedded-c
+	url = https://github.com/tencentyun/qcloud-iot-sdk-embedded-c.git

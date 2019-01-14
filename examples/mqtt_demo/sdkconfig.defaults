@@ -13,6 +13,11 @@ CONFIG_QCLOUD_CERT_FILENAME="test_dev_01_cert.crt"
 CONFIG_QCLOUD_KEY_FILENAME="test_dev_01_private.key"
 
 #
+# Serial flasher config
+#
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+#
 # Partition Table
 #
 CONFIG_PARTITION_TABLE_SINGLE_APP=

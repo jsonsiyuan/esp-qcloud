@@ -1,7 +1,7 @@
 /*
  * ESPRESSIF MIT License
  *
- * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2019 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
  * Permission is hereby granted for use on ESPRESSIF SYSTEMS chips only, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
@@ -43,20 +43,20 @@
 /* 设备名称, 与云端同步设备状态时需要 */
 #define QCLOUD_IOT_MY_DEVICE_NAME      CONFIG_QCLOUD_DEVICE_NAME
 
-#define MAX_SIZE_OF_TOPIC_CONTENT 100
+#ifdef AUTH_MODE_CERT
+    /* 客户端证书文件名  非对称加密使用*/
+    #define QCLOUD_IOT_CERT_FILENAME          CONFIG_QCLOUD_CERT_FILENAME
+    /* 客户端私钥文件名 非对称加密使用*/
+    #define QCLOUD_IOT_KEY_FILENAME           CONFIG_QCLOUD_KEY_FILENAME
 
-#ifndef NOTLS_ENABLED
-#ifdef ASYMC_ENCRYPTION_ENABLED
-/* 客户端证书文件名  非对称加密使用*/
-#define QCLOUD_IOT_CERT_FILENAME          CONFIG_QCLOUD_CERT_FILENAME
-/* 客户端私钥文件名 非对称加密使用*/
-#define QCLOUD_IOT_KEY_FILENAME           CONFIG_QCLOUD_KEY_FILENAME
-static char sg_cert_file[PATH_MAX + 1];     //客户端证书全路径
-static char sg_key_file[PATH_MAX + 1];      //客户端密钥全路径
+    static char sg_cert_file[PATH_MAX + 1];      //客户端证书全路径
+    static char sg_key_file[PATH_MAX + 1];       //客户端密钥全路径
+
 #else
-#define QCLOUD_IOT_PSK                  "YOUR_IOT_PSK"
+    #define QCLOUD_IOT_DEVICE_SECRET          CONFIG_QCLOUD_DEVICE_SECRET
 #endif
-#endif
+
+#define MAX_SIZE_OF_TOPIC_CONTENT 100
 
 static const int CONNECTED_BIT = BIT0;
 static const char* TAG = "esp32-qcloud-mqtt-demo";
@@ -174,17 +174,23 @@ static int setup_connect_init_params(MQTTInitParams* initParams)
     initParams->device_name = QCLOUD_IOT_MY_DEVICE_NAME;
     initParams->product_id = QCLOUD_IOT_MY_PRODUCT_ID;
 
-#ifndef NOTLS_ENABLED
-#ifdef ASYMC_ENCRYPTION_ENABLED
-    /* 使用非对称加密*/
-    sprintf(sg_cert_file, "%s/%s", base_path, QCLOUD_IOT_CERT_FILENAME);
-    sprintf(sg_key_file, "%s/%s", base_path, QCLOUD_IOT_KEY_FILENAME);
+#ifdef AUTH_MODE_CERT
+	/* 使用非对称加密*/
+    char certs_dir[PATH_MAX + 1] = "certs";
+    char current_path[PATH_MAX + 1];
+    char *cwd = getcwd(current_path, sizeof(current_path));
+    if (cwd == NULL)
+    {
+        ESP_LOGE(TAG, "getcwd return NULL");
+        return QCLOUD_ERR_FAILURE;
+    }
+    sprintf(sg_cert_file, "%s/%s/%s", base_path, certs_dir, QCLOUD_IOT_CERT_FILENAME);
+    sprintf(sg_key_file, "%s/%s/%s", base_path, certs_dir, QCLOUD_IOT_KEY_FILENAME);
 
     initParams->cert_file = sg_cert_file;
     initParams->key_file = sg_key_file;
 #else
-    initParams->psk = QCLOUD_IOT_PSK;
-#endif
+    initParams->device_secret = QCLOUD_IOT_DEVICE_SECRET;
 #endif
 
     initParams->command_timeout = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
