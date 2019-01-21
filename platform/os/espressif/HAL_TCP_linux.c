@@ -21,7 +21,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <netinet/tcp.h>
 #include <netdb.h>
 
 #include "qcloud_iot_import.h"

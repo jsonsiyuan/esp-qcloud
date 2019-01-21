@@ -25,6 +25,7 @@ extern "C" {
 #include <stdbool.h>
 #include <inttypes.h>
 #include <sys/time.h>
+#include <stdarg.h>
 
 #define _IN_            /* 表明这是一个输入参数. */
 #define _OU_            /* 表明这是一个输出参数. */
