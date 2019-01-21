@@ -4,17 +4,17 @@
 # (Uses default behaviour of compiling all source files in directory, adding 'include' to include path.)
 
 COMPONENT_ADD_INCLUDEDIRS := \
-	qcloud-iot-sdk-embedded-c/src/sdk-impl \
-	qcloud-iot-sdk-embedded-c/src/sdk-impl/exports \
+	platform/sdk-impl \
+	platform/sdk-impl/exports \
 	qcloud-iot-sdk-embedded-c/src/mqtt/include \
 	qcloud-iot-sdk-embedded-c/src/utils/digest \
 	qcloud-iot-sdk-embedded-c/src/utils/farra \
 	qcloud-iot-sdk-embedded-c/src/device/include
 
 COMPONENT_SRCDIRS := \
-	qcloud-iot-sdk-embedded-c/src/sdk-impl \
-	qcloud-iot-sdk-embedded-c/src/platform/os/linux \
-	qcloud-iot-sdk-embedded-c/src/platform/ssl/mbedtls \
+	platform/sdk-impl \
+	platform/os/espressif \
+	platform/ssl/mbedtls \
 	qcloud-iot-sdk-embedded-c/src/mqtt/src \
 	qcloud-iot-sdk-embedded-c/src/utils/digest \
 	qcloud-iot-sdk-embedded-c/src/utils/farra \
