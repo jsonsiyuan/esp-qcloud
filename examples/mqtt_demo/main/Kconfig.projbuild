@@ -42,4 +42,10 @@ config QCLOUD_KEY_FILENAME
     help
         KEY FILENAME
 
+config QCLOUD_CERT_FILE_SIZE
+    int "CERT FILE SIZE"
+    default 2048
+    help
+        CERT FILE SIZE
+
 endmenu

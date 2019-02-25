@@ -26,13 +26,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "nvs_flash.h"
-#include "esp_vfs_fat.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
 #include "esp_log.h"
 
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
+
+#define QCLOUD_FILE_SIZE   CONFIG_QCLOUD_CERT_FILE_SIZE
 
 /* 测试路由器帐号  */
 #define TEST_WIFI_SSID                 CONFIG_QCLOUD_WiFi_SSID
@@ -44,13 +45,11 @@
 #define QCLOUD_IOT_MY_DEVICE_NAME      CONFIG_QCLOUD_DEVICE_NAME
 
 #ifdef AUTH_MODE_CERT
-    /* 客户端证书文件名  非对称加密使用*/
-    #define QCLOUD_IOT_CERT_FILENAME          CONFIG_QCLOUD_CERT_FILENAME
-    /* 客户端私钥文件名 非对称加密使用*/
-    #define QCLOUD_IOT_KEY_FILENAME           CONFIG_QCLOUD_KEY_FILENAME
 
-    static char sg_cert_file[PATH_MAX + 1];      //客户端证书全路径
-    static char sg_key_file[PATH_MAX + 1];       //客户端密钥全路径
+    extern const uint8_t test_cert_crt_start[] asm("_binary_test_cert_crt_start");
+    extern const uint8_t test_cert_crt_end[] asm("_binary_test_cert_crt_end");
+    extern const uint8_t test_private_key_start[] asm("_binary_test_private_key_start");
+    extern const uint8_t test_private_key_end[] asm("_binary_test_private_key_end");
 
 #else
     #define QCLOUD_IOT_DEVICE_SECRET          CONFIG_QCLOUD_DEVICE_SECRET
@@ -60,7 +59,6 @@
 
 static const int CONNECTED_BIT = BIT0;
 static const char* TAG = "esp32-qcloud-mqtt-demo";
-const char* base_path = "/fatfs";
 static int sg_count = 0;
 static int sg_sub_packet_id = -1;
 static EventGroupHandle_t wifi_event_group;
@@ -176,19 +174,9 @@ static int setup_connect_init_params(MQTTInitParams* initParams)
 
 #ifdef AUTH_MODE_CERT
 	/* 使用非对称加密*/
-    char certs_dir[PATH_MAX + 1] = "certs";
-    char current_path[PATH_MAX + 1];
-    char *cwd = getcwd(current_path, sizeof(current_path));
-    if (cwd == NULL)
-    {
-        ESP_LOGE(TAG, "getcwd return NULL");
-        return QCLOUD_ERR_FAILURE;
-    }
-    sprintf(sg_cert_file, "%s/%s/%s", base_path, certs_dir, QCLOUD_IOT_CERT_FILENAME);
-    sprintf(sg_key_file, "%s/%s/%s", base_path, certs_dir, QCLOUD_IOT_KEY_FILENAME);
+    initParams->cert_file = (const char *)test_cert_crt_start；
+    initParams->key_file = (const char *)test_private_key_start；
 
-    initParams->cert_file = sg_cert_file;
-    initParams->key_file = sg_key_file;
 #else
     initParams->device_secret = QCLOUD_IOT_DEVICE_SECRET;
 #endif
@@ -293,7 +281,7 @@ void qcloud_mqtt_demo(void)
         rc = IOT_MQTT_Yield(client, 200);
 
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            sleep(1);
+            vTaskDelay(1);
             continue;
         } else if (rc != QCLOUD_ERR_SUCCESS && rc != QCLOUD_ERR_MQTT_RECONNECTED) {
             ESP_LOGE(TAG, "exit with error: %d", rc);
@@ -315,8 +303,13 @@ void qcloud_example_task(void* parm)
         if (uxBits & CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
             qcloud_mqtt_demo();
+            vTaskDelete(NULL);
         }
+
+        vTaskDelay(1);
     }
+
+    vTaskDelete(NULL);
 }
 
 static void wifi_connection(void)
@@ -378,27 +371,8 @@ static void esp32_wifi_initialise(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-static void esp32_fs_init()
-{
-    static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-
-    const esp_vfs_fat_mount_config_t mount_config = {
-        .max_files = 10,
-        .format_if_mount_failed = false
-    };
-
-    esp_err_t err = esp_vfs_fat_spiflash_mount(base_path, "storage", &mount_config, &s_wl_handle);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to mount FATFS (0x%x)", err);
-    }
-
-    return;
-}
-
 void app_main()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
-    esp32_fs_init();
     esp32_wifi_initialise();
 }

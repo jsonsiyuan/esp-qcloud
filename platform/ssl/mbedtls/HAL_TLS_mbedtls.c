@@ -110,12 +110,12 @@ static int _mbedtls_client_init(TLSDataParams *pDataParams, TLSConnectParams *pC
 
 #ifdef AUTH_MODE_CERT
     if (pConnectParams->cert_file != NULL && pConnectParams->key_file != NULL) {
-            if ((ret = mbedtls_x509_crt_parse_file(&(pDataParams->client_cert), pConnectParams->cert_file)) != 0) {
+        if ((ret = mbedtls_x509_crt_parse(&(pDataParams->client_cert), (const unsigned char *)(pConnectParams->cert_file), strlen(pConnectParams->cert_file) + 1)) != 0) {
             Log_e("load client cert file failed returned -0x%x", ret);
             return QCLOUD_ERR_SSL_CERT;
         }
 
-        if ((ret = mbedtls_pk_parse_keyfile(&(pDataParams->private_key), pConnectParams->key_file, "")) != 0) {
+        if ((ret = mbedtls_pk_parse_key(&(pDataParams->private_key), (const unsigned char *)(pConnectParams->key_file), strlen(pConnectParams->key_file) + 1, NULL, 0)) != 0) {
             Log_e("load client key file failed returned -0x%x", ret);
             return QCLOUD_ERR_SSL_CERT;
         }

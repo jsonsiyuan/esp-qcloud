@@ -19,3 +19,5 @@ COMPONENT_SRCDIRS := \
 	qcloud-iot-sdk-embedded-c/src/utils/digest \
 	qcloud-iot-sdk-embedded-c/src/utils/farra \
 	qcloud-iot-sdk-embedded-c/src/device/src 
+
+CFLAGS += -DAUTH_MODE_CERT
