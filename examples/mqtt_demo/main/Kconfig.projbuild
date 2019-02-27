@@ -24,28 +24,10 @@ config QCLOUD_DEVICE_NAME
     help
         device name
 
-config QCLOUD_CERT_FILENAME
-    string "CERT FILENAME"
-    default "test_dev_01_cert.crt"
-    help
-        CERT FILENAME
-
 config QCLOUD_DEVICE_SECRET
     string "DEVICE SECRET"
     default "test_dev_secret.crt"
     help
         DEVICE SECRET
-
-config QCLOUD_KEY_FILENAME
-    string "KEY FILENAME"
-    default "test_dev_01_private.key"
-    help
-        KEY FILENAME
-
-config QCLOUD_CERT_FILE_SIZE
-    int "CERT FILE SIZE"
-    default 2048
-    help
-        CERT FILE SIZE
 
 endmenu
