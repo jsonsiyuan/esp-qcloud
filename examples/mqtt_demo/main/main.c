@@ -33,8 +33,6 @@
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 
-#define QCLOUD_FILE_SIZE   CONFIG_QCLOUD_CERT_FILE_SIZE
-
 /* 测试路由器帐号  */
 #define TEST_WIFI_SSID                 CONFIG_QCLOUD_WiFi_SSID
 /* 测试路由器密码  */
