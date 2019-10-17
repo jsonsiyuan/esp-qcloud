@@ -30,6 +30,8 @@
 #include "esp_event_loop.h"
 #include "esp_log.h"
 
+#define AUTH_MODE_CERT
+
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 
@@ -172,8 +174,8 @@ static int setup_connect_init_params(MQTTInitParams* initParams)
 
 #ifdef AUTH_MODE_CERT
 	/* 使用非对称加密*/
-    initParams->cert_file = (const char *)test_cert_crt_start；
-    initParams->key_file = (const char *)test_private_key_start；
+    initParams->cert_file = (const char *)test_cert_crt_start;
+    initParams->key_file = (const char *)test_private_key_start;
 
 #else
     initParams->device_secret = QCLOUD_IOT_DEVICE_SECRET;
