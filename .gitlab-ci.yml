@@ -32,7 +32,7 @@ build_esp32_demo_cmake:
     - cd examples/mqtt_demo
     - $IDF_PATH/tools/idf.py build
 
-build_esp32_demo_cmake_v3.2:
+build_esp32_demo_cmake_v3.3:
   stage: build_esp32
   image: $CI_DOCKER_REGISTRY/esp32-ci-env
   tags:
@@ -47,7 +47,7 @@ build_esp32_demo_cmake_v3.2:
     - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     - git --version
     - git submodule update --init --recursive
-    - git clone --branch release/v3.2 --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
+    - git clone --branch release/v3.3 --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
     - cd esp-idf
     - ./tools/ci/mirror-submodule-update.sh
     - cd ..
