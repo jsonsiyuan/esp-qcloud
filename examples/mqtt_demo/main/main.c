@@ -30,8 +30,6 @@
 #include "esp_event_loop.h"
 #include "esp_log.h"
 
-#define AUTH_MODE_CERT
-
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 
@@ -188,7 +186,7 @@ static int setup_connect_init_params(MQTTInitParams* initParams)
     initParams->event_handle.h_fp = mqtt_demo_event_handler;
     initParams->event_handle.context = NULL;
 
-    return QCLOUD_ERR_SUCCESS;
+    return QCLOUD_RET_SUCCESS;
 }
 
 /**
@@ -241,7 +239,7 @@ static int _register_subscribe_topics(void* client)
 
 void qcloud_mqtt_demo(void)
 {
-    IOT_Log_Set_Level(DEBUG);
+    IOT_Log_Set_Level(eLOG_DEBUG);
     IOT_Log_Set_MessageHandler(log_handler);
 
     int rc;
@@ -250,7 +248,7 @@ void qcloud_mqtt_demo(void)
 
     rc = setup_connect_init_params(&init_params);
 
-    if (rc != QCLOUD_ERR_SUCCESS) {
+    if (rc != QCLOUD_RET_SUCCESS) {
         ESP_LOGE(TAG, "setup_connect_init_params Failed");
         return;
     }
@@ -283,7 +281,7 @@ void qcloud_mqtt_demo(void)
         if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
             vTaskDelay(1);
             continue;
-        } else if (rc != QCLOUD_ERR_SUCCESS && rc != QCLOUD_ERR_MQTT_RECONNECTED) {
+        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
             ESP_LOGE(TAG, "exit with error: %d", rc);
             break;
         }
