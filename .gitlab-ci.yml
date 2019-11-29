@@ -10,27 +10,28 @@ variables:
   IDF_PATH: "$CI_PROJECT_DIR/esp-idf"
   IDF_CI_BUILD: "1"
 
-build_esp32_demo_cmake:
-  stage: build_esp32
-  image: $CI_DOCKER_REGISTRY/esp32-ci-env
-  tags:
-    - build
-  script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git --version
-    - git submodule update --init --recursive
-    - git clone --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
-    - cd esp-idf
-    - ./tools/ci/mirror-submodule-update.sh
-    - cd ..
-    - cd examples/mqtt_demo
-    - $IDF_PATH/tools/idf.py build
+# CI environment canot run ninja
+# build_esp32_demo_cmake:
+#   stage: build_esp32
+#   image: $CI_DOCKER_REGISTRY/esp32-ci-env
+#   tags:
+#     - build
+#   script:
+#     # add gitlab ssh key
+#     - mkdir -p ~/.ssh
+#     - chmod 700 ~/.ssh
+#     - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
+#     - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+#     - chmod 600 ~/.ssh/id_rsa
+#     - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+#     - git --version
+#     - git submodule update --init --recursive
+#     - git clone --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
+#     - cd esp-idf
+#     - ./tools/ci/mirror-submodule-update.sh
+#     - cd ..
+#     - cd examples/mqtt_demo
+#     - $IDF_PATH/tools/idf.py build
 
 build_esp32_demo_cmake_v3.3:
   stage: build_esp32
