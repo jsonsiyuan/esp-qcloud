@@ -1,6 +1,5 @@
 stages:
-  - build_esp32
-  - build_esp8266
+  - build
   - deploy
 
 variables:
@@ -12,7 +11,7 @@ variables:
 
 # CI environment canot run ninja
 # build_esp32_demo_cmake:
-#   stage: build_esp32
+#   stage: build
 #   image: $CI_DOCKER_REGISTRY/esp32-ci-env
 #   tags:
 #     - build
@@ -34,7 +33,7 @@ variables:
 #     - $IDF_PATH/tools/idf.py build
 
 build_esp32_demo_cmake_v3.3:
-  stage: build_esp32
+  stage: build
   image: $CI_DOCKER_REGISTRY/esp32-ci-env
   tags:
     - build
@@ -56,7 +55,7 @@ build_esp32_demo_cmake_v3.3:
     - $IDF_PATH/tools/idf.py build
 
 build_esp32_demo_make:
-  stage: build_esp32
+  stage: build
   image: $CI_DOCKER_REGISTRY/esp32-ci-env
   tags:
     - build
@@ -79,7 +78,7 @@ build_esp32_demo_make:
     - make
 
 build_esp8266_demo:
-  stage: build_esp8266
+  stage: build
   image: $CI_DOCKER_REGISTRY/esp8266-ci-env-new 
   tags:
     - build
