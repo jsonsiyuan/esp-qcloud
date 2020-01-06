@@ -28,6 +28,7 @@
 
 #include "device_flash.h"
 #include "device_OTA.h"
+#include "device_tree_tuple.h"
 
 
 
@@ -37,12 +38,6 @@
 #define fwVer "1.0.0"
 #define OTA_BUF_LEN (1024+1)
 char buf_ota[OTA_BUF_LEN];
-
-
-#define QCLOUD_IOT_MY_PRODUCT_ID       CONFIG_QCLOUD_PROUDCT_ID
-#define QCLOUD_IOT_MY_DEVICE_NAME      CONFIG_QCLOUD_DEVICE_NAME
-#define QCLOUD_IOT_DEVICE_SECRET       CONFIG_QCLOUD_DEVICE_SECRET
-
 
 
 static bool sg_pub_ack = false;
@@ -98,26 +93,33 @@ static void event_handler(void *pclient, void *handle_context, MQTTEventMsg *msg
 	}
 }
 
+/**
+ * 设置MQTT connet初始化参数
+ *
+ * @param initParams MQTT connet初始化参数
+ *
+ * @return 0: 参数初始化成功  非0: 失败
+ */
+
 static int _setup_connect_init_params(MQTTInitParams* initParams)
 {
-	
-	
-	initParams->device_name = QCLOUD_IOT_MY_DEVICE_NAME;
-	initParams->product_id = QCLOUD_IOT_MY_PRODUCT_ID;
+	initParams->device_name = QCLOUD_DEVICE_NAME;
+	initParams->product_id = QCLOUD_PRODUCT_ID;
 
-#ifdef AUTH_MODE_CERT
-#else
-	initParams->device_secret = QCLOUD_IOT_DEVICE_SECRET;
-#endif
 
-    
+	initParams->device_secret = QCLOUD_DEVICE_SECRET;
+
+
 	initParams->command_timeout = QCLOUD_IOT_MQTT_COMMAND_TIMEOUT;
 	initParams->keep_alive_interval_ms = QCLOUD_IOT_MQTT_KEEP_ALIVE_INTERNAL;
-	initParams->auto_connect_enable = 1;
-    initParams->event_handle.h_fp = event_handler;
 
-    return QCLOUD_RET_SUCCESS;
+	initParams->auto_connect_enable = 1;
+	initParams->event_handle.h_fp = event_handler;
+	initParams->event_handle.context = NULL;
+
+	return QCLOUD_RET_SUCCESS;
 }
+
 
 static void dooya_qcloud_ota_all(  void )
 {
@@ -145,7 +147,7 @@ static void dooya_qcloud_ota_all(  void )
         Log_e("Cloud Device Construct Failed");
         
     }
-	h_ota = IOT_OTA_Init(QCLOUD_IOT_MY_PRODUCT_ID, QCLOUD_IOT_MY_DEVICE_NAME, client);
+	h_ota = IOT_OTA_Init(QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME, client);
     if (NULL == h_ota) 
 	{
         Log_e("initialize OTA failed");
