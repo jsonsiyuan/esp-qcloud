@@ -186,7 +186,7 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 	uint32_t offset_tmp=0;
 	uint32_t offset_all=0;
 
-	char buf_ota_tmp[2];
+	//char buf_ota_tmp[2];
 	int rc;
 	esp_err_t err;
 	const esp_partition_t *update_partition = NULL;

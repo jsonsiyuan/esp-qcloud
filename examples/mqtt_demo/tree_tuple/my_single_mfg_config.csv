@@ -1,0 +1,5 @@
+key,type,encoding,value
+qcloud_tuple,namespace,,
+DeviceName,data,string,dev001
+DeviceSecret,data,string,fFsIZunzqFyJlfbuhEq5EA==
+ProductKey,data,string,YWJ83QBPXF

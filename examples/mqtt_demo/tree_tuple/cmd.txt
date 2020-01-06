@@ -1,0 +1,3 @@
+nvs_partition_gen.py --input my_single_mfg_config.csv --output my_single_mfg.bin --size 0x4000 --version v1
+
+esptool.py 。。。。。。 0x100000 my_single_mfg.bin
