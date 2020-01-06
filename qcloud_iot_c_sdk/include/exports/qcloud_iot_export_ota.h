@@ -147,6 +147,12 @@ int IOT_OTA_StartDownload(void *handle, uint32_t offset, uint32_t size);
  *
  */
 void IOT_OTA_UpdateClientMd5(void *handle, char * buff, uint32_t size);
+/**
+ * tmp
+ *
+ */
+
+int IOT_OTA_GetSize(void *handle, uint32_t *sizefile_len);
 
 /**
  * @brief Report local firmware version to server

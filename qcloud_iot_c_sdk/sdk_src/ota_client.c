@@ -362,6 +362,12 @@ void IOT_OTA_UpdateClientMd5(void *handle, char * buff, uint32_t size)
 }
 
 
+int IOT_OTA_GetSize(void *handle, uint32_t *sizefile_len)
+{
+	OTA_Struct_t *h_ota = (OTA_Struct_t *) handle;
+	*sizefile_len=h_ota->size_file;
+	return 0;
+}
 
 int IOT_OTA_ReportVersion(void *handle, const char *version)
 {

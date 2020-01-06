@@ -78,7 +78,7 @@ static void _free_mebeddtls(DTLSDataParams *pParams)
     mbedtls_ssl_config_free(&(pParams->ssl_conf));
     mbedtls_ctr_drbg_free(&(pParams->ctr_drbg));
     mbedtls_entropy_free(&(pParams->entropy));
-    mbedtls_ssl_cookie_free(&(pParams->cookie_ctx));
+    //mbedtls_ssl_cookie_free(&(pParams->cookie_ctx));
 
     HAL_Free(pParams);
 }
@@ -225,13 +225,13 @@ uintptr_t HAL_DTLS_Connect(DTLSConnectParams *pConnectParams, const char *host, 
     mbedtls_ssl_conf_rng(&pDataParams->ssl_conf, mbedtls_ctr_drbg_random, &pDataParams->ctr_drbg);
     mbedtls_ssl_conf_dbg(&pDataParams->ssl_conf, _dtls_debug, NULL);
 
-    if ((ret = mbedtls_ssl_cookie_setup(&pDataParams->cookie_ctx, mbedtls_ctr_drbg_random, &pDataParams->ctr_drbg)) != 0) {
+    /*if ((ret = mbedtls_ssl_cookie_setup(&pDataParams->cookie_ctx, mbedtls_ctr_drbg_random, &pDataParams->ctr_drbg)) != 0) {
         Log_e("mbedtls_ssl_cookie_setup result 0x%04x", ret);
         goto error;
     }
 
     mbedtls_ssl_conf_dtls_cookies(&pDataParams->ssl_conf, mbedtls_ssl_cookie_write, mbedtls_ssl_cookie_check, &pDataParams->cookie_ctx);
-
+*/
 #ifndef AUTH_MODE_CERT
 	mbedtls_ssl_conf_ciphersuites(&(pDataParams->ssl_conf), ciphersuites);
 #endif        
@@ -309,7 +309,7 @@ void HAL_DTLS_Disconnect(uintptr_t handle)
     mbedtls_ssl_config_free(&(pParams->ssl_conf));
     mbedtls_ctr_drbg_free(&(pParams->ctr_drbg));
     mbedtls_entropy_free(&(pParams->entropy));
-    mbedtls_ssl_cookie_free(&(pParams->cookie_ctx));
+    //mbedtls_ssl_cookie_free(&(pParams->cookie_ctx));
 
     HAL_Free((void *)handle);
 }
