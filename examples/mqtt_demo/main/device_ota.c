@@ -264,35 +264,33 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 			Log_i("###############################################");
 			len = IOT_OTA_FetchYield(h_ota, buf_ota, OTA_BUF_LEN, 1000);
 			if (len > 0) 
-			{
-					
-					
-					/*Log_i("recv data len is [%d][%x][%x]\r\n",len,buf_ota[0],buf_ota[1]);	
-					for (i=0;i<len;i++)
-					{
-						Log_i("[%x]\r\n",buf_ota[i]);						
-					}
-					printf("\r\n");*/
-					err=spi_flash_write(update_partition->address + offset_tmp, buf_ota, len);
-					if(err!=0)
-					{
-						Log_i("spi_flash_write fail");
-					}
-					
-					/*读一下
-					memset(buf_ota_tmp,0,2);
-					err=spi_flash_read(update_partition->address + offset_tmp, buf_ota_tmp, 2);
-					if(err!=0)
-					{
-						Log_i("spi_flash_write fail");
-					}
-					Log_i("flash data len is [%x][%x]\r\n",buf_ota_tmp[0],buf_ota_tmp[1]);
-					*/
+			{	
+				/*Log_i("recv data len is [%d][%x][%x]\r\n",len,buf_ota[0],buf_ota[1]);	
+				for (i=0;i<len;i++)
+				{
+					Log_i("[%x]\r\n",buf_ota[i]);						
+				}
+				printf("\r\n");*/
+				err=spi_flash_write(update_partition->address + offset_tmp, buf_ota, len);
+				if(err!=0)
+				{
+					Log_i("spi_flash_write fail");
+				}
+				
+				/*读一下
+				memset(buf_ota_tmp,0,2);
+				err=spi_flash_read(update_partition->address + offset_tmp, buf_ota_tmp, 2);
+				if(err!=0)
+				{
+					Log_i("spi_flash_write fail");
+				}
+				Log_i("flash data len is [%x][%x]\r\n",buf_ota_tmp[0],buf_ota_tmp[1]);
+				*/
 
-					offset_tmp+=len;
-					
-					Log_i("offset data len is [%d]\r\n",offset_tmp);
-					dooya_set_ota_number_to_flash(offset_tmp);
+				offset_tmp+=len;
+				
+				Log_i("offset data len is [%d]\r\n",offset_tmp);
+				dooya_set_ota_number_to_flash(offset_tmp);
 					
 					
 			}
