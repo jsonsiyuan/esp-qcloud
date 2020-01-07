@@ -5,13 +5,7 @@
 
 
 
-int my_abs(int number)
 
-{
-
-   return (number>= 0 ? number : -number);
-
-}
 
 extern uint8_t dooya_CurtainPosition_data;
 
