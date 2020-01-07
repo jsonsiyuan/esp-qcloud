@@ -35,7 +35,7 @@
 
 
 
-#define fwVer "1.0.0"
+
 #define OTA_BUF_LEN (1024+1)
 char buf_ota[OTA_BUF_LEN];
 
@@ -145,6 +145,7 @@ static void dooya_qcloud_ota_all(  void )
 	else 
     {
         Log_e("Cloud Device Construct Failed");
+		esp_restart();
         
     }
 	h_ota = IOT_OTA_Init(QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME, client);
@@ -180,6 +181,7 @@ static void dooya_qcloud_ota_all(  void )
 
 static int32_t dooya_qcloud_ota_deal(void *pclient)
 {
+	
 	bool upgrade_fetch_success = true;
 	int len;
 	static int ota_over = 0;
@@ -187,7 +189,8 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 	uint32_t offset = 0;
 	uint32_t offset_tmp=0;
 	uint32_t offset_all=0;
-
+	
+	static int test_number = 0;
 	//char buf_ota_tmp[2];
 	int rc;
 	esp_err_t err;
@@ -207,27 +210,33 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
     }
     Log_i( "Running partition type %d subtype %d (offset 0x%08x)",running->type, running->subtype, running->address);
 	*/
-
-	update_partition = esp_ota_get_next_update_partition(NULL);
-	Log_i( "Writing to partition subtype %d at offset 0x%x",update_partition->subtype, update_partition->address);
-
-	if(-1==dooya_get_ota_number_from_flash(&offset))
+	test_number++;
+	if(test_number>3)
 	{
-		offset=0;
+		 dooya_set_ota_number_to_flash(0);
+		 dooya_set_ota_flag_to_flash(0);
+		 esp_restart();
 	}
-	offset_tmp=offset/SPI_FLASH_SEC_SIZE;
-	offset_tmp=offset_tmp*SPI_FLASH_SEC_SIZE;
-	
 	if (IOT_OTA_IsFetching(h_ota)) 
 	{
 		Log_i("IOT_OTA_IsFetching enter");
-	
+		
+		update_partition = esp_ota_get_next_update_partition(NULL);
+		Log_i( "Writing to partition subtype %d at offset 0x%x",update_partition->subtype, update_partition->address);
+		if(-1==dooya_get_ota_number_from_flash(&offset))
+		{
+			offset=0;
+		}
+		offset_tmp=offset/SPI_FLASH_SEC_SIZE;
+		offset_tmp=offset_tmp*SPI_FLASH_SEC_SIZE;
+
+
+
 		//getFwOffset
 		//cal file md5
 
 		//set offset and start http connect	
 		IOT_OTA_GetSize(h_ota,&size_file);
-		
 		//HTTP get
 		Log_i("ota all is [%d]",size_file);
 		rc = IOT_OTA_StartDownload(h_ota, offset_tmp, size_file);
@@ -306,7 +315,7 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 	    // Must check MD5 match or not
 
 		ota_over = 1;
-		dooya_set_ota_number_to_flash(0);
+		
 	}
 	//err = esp_ota_set_boot_partition(update_partition);
 	//esp_restart();
@@ -347,6 +356,8 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 				IOT_MQTT_Yield(pclient, 200);
 			}
 			sg_pub_ack = false;	
+			dooya_set_ota_number_to_flash(0);
+			dooya_set_ota_flag_to_flash(0);
 			esp_restart();
 
       

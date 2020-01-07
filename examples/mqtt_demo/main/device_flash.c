@@ -15,7 +15,9 @@
 #define wifi_password "password"
 
 #define wifi_status "wifistatus"
+
 #define ota_number "otanumber"
+#define ota_flag "otaflag"
 
 
 
@@ -239,6 +241,55 @@ int32_t dooya_get_ota_number_from_flash(uint32_t *status)
 	}
 
 	err = nvs_get_u32(handle_1, ota_number, status);
+
+	if (err != ESP_OK)
+	{
+		nvs_close(handle_1);
+		return -1;
+	}	
+	//关闭数据库，关闭面板！
+	nvs_close(handle_1);
+	return 0;
+
+}
+int32_t dooya_set_ota_flag_to_flash(uint32_t status)
+{
+	nvs_handle handle_1;
+	esp_err_t err = nvs_open(space1, NVS_READWRITE, &handle_1);
+
+	//打开数据库，打开一个数据库就相当于会返回一个句柄
+	if (err != ESP_OK)
+	{
+		return -1;
+	}
+
+	err = nvs_set_u32(handle_1, ota_flag, status);
+
+	if (err != ESP_OK)
+	{
+		nvs_close(handle_1);
+		return -1;
+	}	
+
+	nvs_commit(handle_1);
+	//关闭数据库，关闭面板！
+	nvs_close(handle_1);
+	return 0;
+
+}
+
+int32_t dooya_get_ota_flag_from_flash(uint32_t *status)
+{
+	nvs_handle handle_1;
+	esp_err_t err = nvs_open(space1, NVS_READWRITE, &handle_1);
+
+	//打开数据库，打开一个数据库就相当于会返回一个句柄
+	if (err != ESP_OK)
+	{
+		return -1;
+	}
+
+	err = nvs_get_u32(handle_1, ota_flag, status);
 
 	if (err != ESP_OK)
 	{

@@ -30,27 +30,38 @@
 #include "esp_event_loop.h"
 #include "esp_log.h"
 
+#include "mqtt_client.h"
+
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 #include "device_OTA.h"
 #include "device_main.h"
 #include "device_tree_tuple.h"
 #include "device_flash.h"
+#include "cJSON.h"
 
 #define MAX_SIZE_OF_TOPIC_CONTENT 100
 
 static const int CONNECTED_BIT = BIT0;
-static const char* TAG = "esp32-qcloud-mqtt-demo";
+static const char* TAG = "qcloud-mqtt";
 static int sg_count = 0;
-static int sg_sub_packet_id = -1;
 static EventGroupHandle_t wifi_event_group;
 
-bool log_handler(const char* message)
-{
-    //实现日志回调的写方法
-    //实现内容后请返回true
-    return false;
-}
+static int sub_packet_id = 0;
+static bool sub_ack = false;
+
+static int pub_packet_id = 0;
+static bool pub_ack = false;
+
+
+#define mqtt_ota_flag ("$ota/update")
+#define down_flag ("$thing/down/property")
+
+#define up_info ("{\"method\":\"report_info\", \"clientToken\":\"%s-%d\", \"params\":{\"module_hardinfo\":\"ESP8266\",\"fw_ver\":\"1.0.0\"}}")
+#define up_curtainConrtol ("{\"method\":\"report\", \"clientToken\":\"%s-%d\", \"params\":{\"curtainConrtol\":%d}}")
+#define up_curtainPosition ("{\"method\":\"report\", \"clientToken\":\"%s-%d\", \"params\":{\"curtainPosition\":%d}}")
+
+
 
 void mqtt_demo_event_handler(void* pclient, void* handle_context, MQTTEventMsg* msg)
 {
@@ -80,17 +91,20 @@ void mqtt_demo_event_handler(void* pclient, void* handle_context, MQTTEventMsg* 
 
         case MQTT_EVENT_SUBCRIBE_SUCCESS:
             ESP_LOGI(TAG, "subscribe success, packet-id=%u", (unsigned int)packet_id);
-            sg_sub_packet_id = packet_id;
+            if (sub_packet_id == packet_id)
+			{
+				sub_ack = true;
+			}
             break;
 
         case MQTT_EVENT_SUBCRIBE_TIMEOUT:
             ESP_LOGI(TAG, "subscribe wait ack timeout, packet-id=%u", (unsigned int)packet_id);
-            sg_sub_packet_id = packet_id;
+            
             break;
 
         case MQTT_EVENT_SUBCRIBE_NACK:
             ESP_LOGI(TAG, "subscribe nack, packet-id=%u", (unsigned int)packet_id);
-            sg_sub_packet_id = packet_id;
+            
             break;
 
         case MQTT_EVENT_UNSUBCRIBE_SUCCESS:
@@ -107,6 +121,11 @@ void mqtt_demo_event_handler(void* pclient, void* handle_context, MQTTEventMsg* 
 
         case MQTT_EVENT_PUBLISH_SUCCESS:
             ESP_LOGI(TAG, "publish success, packet-id=%u", (unsigned int)packet_id);
+		
+			if (pub_packet_id == packet_id)
+			{
+				pub_ack = true;
+			}
             break;
 
         case MQTT_EVENT_PUBLISH_TIMEOUT:
@@ -133,12 +152,85 @@ void mqtt_demo_event_handler(void* pclient, void* handle_context, MQTTEventMsg* 
  */
 static void on_message_callback(void* pClient, MQTTMessage* message, void* userData)
 {
-    if (message == NULL) {
+	cJSON *root = NULL;
+	cJSON *item_CurtainPosition = NULL;
+	cJSON * item_CurtainOperation= NULL;
+//	cJSON * item_SetDir= NULL;
+	cJSON * params= NULL;
+	cJSON * url= NULL;
+
+	
+    if (message == NULL) 
+	{
         return;
     }
 
-    ESP_LOGI(TAG, "Receive Message With topicName:%.*s, payload:%.*s",
+    Log_i("Receive Message With topicName:%.*s, payload:%.*s",
              (int) message->topic_len, message->ptopic, (int) message->payload_len, (char*) message->payload);
+	if(NULL!=strstr(message->ptopic,mqtt_ota_flag))
+	{
+		//ota
+		Log_i("is ota_flag flag");
+		root = cJSON_Parse(message->payload);
+		if (root!= NULL)
+		{
+			url=cJSON_GetObjectItem(root, "url");
+			if (url!= NULL)
+			{	
+				dooya_set_ota_flag_to_flash(1);
+				esp_restart();
+			}
+		}
+		
+		
+             
+	}
+	else if(NULL!=strstr(message->ptopic,down_flag))
+	{
+		Log_i("is down_flag flag");
+		if (message->payload == NULL)
+	    {
+	        return;
+	    }
+		root = cJSON_Parse(message->payload);
+		if (root!= NULL)
+		{
+			params=cJSON_GetObjectItem(root, "params");
+			if (params!= NULL)
+			{
+				item_CurtainOperation=cJSON_GetObjectItem(params, "curtainConrtol");
+				if(item_CurtainOperation!= NULL)
+				{
+					if(cJSON_IsNumber(item_CurtainOperation))
+					{
+						Log_i("int is [%d]",item_CurtainOperation->valueint);
+					}
+					else
+					{
+						Log_i("string is [%d]",atoi(item_CurtainOperation->valuestring));
+					}
+				}
+				item_CurtainPosition=cJSON_GetObjectItem(params, "curtainPosition");
+				if(item_CurtainPosition!= NULL)
+				{
+					
+					if(cJSON_IsNumber(item_CurtainPosition))
+					{
+						Log_i("int is [%d]\r\n",item_CurtainPosition->valueint);
+					}
+					else
+					{
+						Log_i("string is [%d]\r\n",atoi(item_CurtainPosition->valuestring));
+					}
+				}
+			}
+			cJSON_Delete(root);
+		}
+
+
+		
+	}
+		
 }
 
 /**
@@ -173,100 +265,296 @@ static int setup_connect_init_params(MQTTInitParams* initParams)
  * 发送topic消息
  *
  */
-static int _publish_msg(void* client)
+
+static int publish_to_upstream_topic_info(void* client,  char *pJsonDoc)
 {
-    char topicName[128] = {0};
-    sprintf(topicName, "%s/%s/%s", QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME, "data");
 
-    PublishParams pub_params = DEFAULT_PUB_PARAMS;
-    pub_params.qos = QOS1;
 
-    char topic_content[MAX_SIZE_OF_TOPIC_CONTENT + 1] = {0};
+	char topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+	int size;
 
-    int size = HAL_Snprintf(topic_content, sizeof(topic_content), "{\"action\": \"publish_test\", \"count\": \"%d\"}", sg_count++);
 
-    if (size < 0 || size > sizeof(topic_content) - 1) {
-        ESP_LOGE(TAG, "payload content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_content));
-        return -3;
-    }
+	size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/up/property/%s/%s",QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME);	
 
-    pub_params.payload = topic_content;
-    pub_params.payload_len = strlen(topic_content);
+	if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1)
+	{
+	Log_e("buf size < topic length!");
+	IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+	}
 
-    return IOT_MQTT_Publish(client, topicName, &pub_params);
+	PublishParams pubParams = DEFAULT_PUB_PARAMS;
+	pubParams.qos = QOS0;
+	pubParams.payload_len = strlen(pJsonDoc);
+	pubParams.payload = (char *) pJsonDoc;
+	IOT_FUNC_EXIT_RC(IOT_MQTT_Publish(client, topic, &pubParams));
+	/*pub_packet_id = IOT_MQTT_Publish(client, topic, &pubParams);
+	Log_i("pub_packet_id is %d",pub_packet_id);
+	if(pub_packet_id<0)
+	{	
+		return -1;
+	}
+	while (!pub_ack) 
+	{
+		Log_i("sg_pub_ack is 1");
+		HAL_SleepMs(1000);
+		IOT_MQTT_Yield(client, 200);
+	}
+	pub_ack = false;
+
+	IOT_FUNC_EXIT_RC(pub_packet_id);*/
 }
+
+static int publish_to_ota_topic_info(void* client)
+{
+
+
+	char topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+	char JsonDoc[100] = {0};
+	int size;
+
+
+	size=HAL_Snprintf(JsonDoc,100,"{\"type\":\"report_version\",\"report\":{\"version\":\"%s\"}}",fwVer);
+	if (size < 0 || size > 100 - 1)
+	{
+		Log_e("buf size < topic length!");
+		IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+	}
+	
+	Log_i("#JsonDoc is %s",JsonDoc);
+	
+	size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC, "$ota/report/%s/%s",QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME);	
+
+	if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1)
+	{
+		Log_e("buf size < topic length!");
+		IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+	}
+
+	PublishParams pubParams = DEFAULT_PUB_PARAMS;
+	pubParams.qos = QOS1;
+	pubParams.payload_len = strlen(JsonDoc);
+	pubParams.payload = (char *) JsonDoc;
+
+	pub_packet_id = IOT_MQTT_Publish(client, topic, &pubParams);
+	while (!pub_ack) 
+	{
+		Log_i("publish_to_ota_topic_info is 1");
+		HAL_SleepMs(1000);
+		IOT_MQTT_Yield(client, 200);
+	}
+	pub_ack = false;
+
+	IOT_FUNC_EXIT_RC(pub_packet_id);
+}
+
+
+
 
 /**
  * 订阅关注topic和注册相应回调处理
  *
  */
-static int _register_subscribe_topics(void* client)
-{
-    static char topic_name[128] = {0};
-    static char user_data[128] = {0};
-    int size = HAL_Snprintf(topic_name, sizeof(topic_name), "%s/%s/%s", QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME, "data");
 
-    if (size < 0 || size > sizeof(topic_name) - 1) {
-        Log_e("topic content length not enough! content size:%d  buf size:%d", size, (int)sizeof(topic_name));
-        return QCLOUD_ERR_FAILURE;
+static int subscribe_downstream_topic(void* client)
+{
+
+	int size;
+	 
+	
+    char *downstream_topic = (char *)HAL_Malloc(MAX_SIZE_OF_CLOUD_TOPIC * sizeof(char));
+    if (downstream_topic == NULL) IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+
+    memset(downstream_topic, 0x0, MAX_SIZE_OF_CLOUD_TOPIC);
+	size = HAL_Snprintf(downstream_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$thing/down/property/%s/%s", QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME);	
+	if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1)
+    {
+        Log_e("buf size < topic length!");
+        HAL_Free(downstream_topic);
+        IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+    }
+    SubscribeParams subscribe_params = DEFAULT_SUB_PARAMS;
+    subscribe_params.on_message_handler = on_message_callback;
+    subscribe_params.qos = QOS0;
+
+    sub_packet_id = IOT_MQTT_Subscribe(client, downstream_topic, &subscribe_params);
+    if (sub_packet_id < 0) 
+	{
+        Log_e("subscribe topic: %s failed: %d.",downstream_topic, sub_packet_id);
+    }
+	else
+	{
+		while (!sub_ack) 
+		{
+			Log_i("subscribe_downstream_topic is 1");
+		 	HAL_SleepMs(1000);
+			//订阅不上，可能需要重启
+		 	IOT_MQTT_Yield(client, 200);
+		}
+		sub_ack = false;
+	}
+	HAL_Free(downstream_topic);
+
+    IOT_FUNC_EXIT_RC(sub_packet_id);
+}
+
+static int subscribe_ota_topic(void* client)
+{
+	int size;
+	char *ota_topic = (char *)HAL_Malloc(MAX_SIZE_OF_CLOUD_TOPIC * sizeof(char));
+	if (ota_topic == NULL) IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+	memset(ota_topic, 0x0, MAX_SIZE_OF_CLOUD_TOPIC);
+	
+	/* subscribe the OTA topic: "$ota/update/$(product_id)/$(device_name)" */
+	size = HAL_Snprintf(ota_topic, MAX_SIZE_OF_CLOUD_TOPIC, "$ota/update/%s/%s", QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME);	 
+    if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1)
+    {
+        Log_e("buf size < topic length!");
+        HAL_Free(ota_topic);
+        IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
     }
 
-    SubscribeParams sub_params = DEFAULT_SUB_PARAMS;
-    sub_params.on_message_handler = on_message_callback;
-    sub_params.user_data = user_data;
-    return IOT_MQTT_Subscribe(client, topic_name, &sub_params);
+	SubscribeParams subscribe_params = DEFAULT_SUB_PARAMS;
+    subscribe_params.on_message_handler = on_message_callback;
+    subscribe_params.qos = QOS1;
+
+
+    sub_packet_id = IOT_MQTT_Subscribe(client, ota_topic, &subscribe_params);
+    if (sub_packet_id < 0) 
+	{
+        Log_e("subscribe topic: %s failed: %d.",ota_topic, sub_packet_id);
+    }
+	else
+	{
+		while (!sub_ack) 
+		{
+			Log_i("subscribe_ota_topic is 1");
+		 	HAL_SleepMs(1000);
+			//订阅不上，可能需要重启
+		 	IOT_MQTT_Yield(client, 200);
+		}
+		sub_ack = false;
+	}
+	HAL_Free(ota_topic);
+	IOT_FUNC_EXIT_RC(sub_packet_id);
 }
+
 
 void qcloud_mqtt_demo(void)
 {
     IOT_Log_Set_Level(eLOG_DEBUG);
-    IOT_Log_Set_MessageHandler(log_handler);
-
+	char JsonDoc[254] = {0};
     int rc;
 
     MQTTInitParams init_params = DEFAULT_MQTTINIT_PARAMS;
 
     rc = setup_connect_init_params(&init_params);
 
-    if (rc != QCLOUD_RET_SUCCESS) {
-        ESP_LOGE(TAG, "setup_connect_init_params Failed");
-        return;
+    if (rc != QCLOUD_RET_SUCCESS) 
+	{
+        Log_i("setup_connect_init_params Failed");
+        
     }
 
     void* client = IOT_MQTT_Construct(&init_params);
 
-    if (client != NULL) {
-        ESP_LOGI(TAG, "Cloud Device Construct Success");
-    } else {
-        ESP_LOGE(TAG, "Cloud Device Construct Failed");
-        return;
+    if (client != NULL) 
+	{
+        Log_i("Cloud Device Construct Success");
+    } 
+	else 
+	{
+        Log_i("Cloud Device Construct Failed");
+		esp_restart();
+        
+    }
+	/****************************************************************/
+	rc = subscribe_downstream_topic(client);
+
+    if (rc < 0) 
+	{
+        Log_i( "Client Subscribe Topic Failed: %d", rc);
+    }
+	rc = subscribe_ota_topic(client);
+    if (rc < 0) 
+	{
+        Log_i( "Client Subscribe Topic Failed: %d", rc);
     }
 
-    rc = _register_subscribe_topics(client);
+	rc =publish_to_ota_topic_info(client);
+	if (rc < 0) 
+	{
+		Log_i( "publish_to_ota_topic_info: %d", rc);
+	}
+	
+	memset (JsonDoc,0,sizeof(JsonDoc));
+	HAL_Snprintf(JsonDoc,sizeof(JsonDoc),up_info,QCLOUD_PRODUCT_ID,sg_count++);
+	Log_i( "publish_to_ota_topic_info: %s", JsonDoc);
+	publish_to_upstream_topic_info(client,  JsonDoc);
+	HAL_SleepMs(1000);
 
-    if (rc < 0) {
-        ESP_LOGE(TAG, "Client Subscribe Topic Failed: %d", rc);
-        return;
-    }
+	memset (JsonDoc,0,sizeof(JsonDoc));
+	HAL_Snprintf(JsonDoc,sizeof(JsonDoc),up_curtainConrtol,QCLOUD_PRODUCT_ID,sg_count++,10);
+	Log_i( "publish_to_ota_topic_info: %s", JsonDoc);
+	publish_to_upstream_topic_info(client,  JsonDoc);
+	HAL_SleepMs(1000);
 
+	
+	memset (JsonDoc,0,sizeof(JsonDoc));
+	HAL_Snprintf(JsonDoc,sizeof(JsonDoc),up_curtainPosition,QCLOUD_PRODUCT_ID,sg_count++,10);
+	Log_i( "publish_to_ota_topic_info: %s", JsonDoc);
+	publish_to_upstream_topic_info(client,  JsonDoc);
+	HAL_SleepMs(1000);
+	
     do {
-        if (sg_sub_packet_id > 0) {
-            if (_publish_msg(client) < 0) {
-                ESP_LOGE(TAG, "client publish topic failed :%d.", rc);
-            }
-        }
 
         rc = IOT_MQTT_Yield(client, 200);
-
-        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) {
-            vTaskDelay(1);
+		
+        if (rc == QCLOUD_ERR_MQTT_ATTEMPTING_RECONNECT) 
+		{
+            HAL_SleepMs(1000);
             continue;
-        } else if (rc != QCLOUD_RET_SUCCESS && rc != QCLOUD_RET_MQTT_RECONNECTED) {
-            ESP_LOGE(TAG, "exit with error: %d", rc);
-            break;
-        }
+        } 
+		else if (rc != QCLOUD_RET_SUCCESS) 
+		{
+			Log_e("Exit loop caused of errCode: %d", rc);
+			HAL_SleepMs(1000);
+			continue;
+		}
 
-    } while (0);
+
+		
+		/*report msg to server*/
+		/*report the lastest properties's status*/
+		{
+			Log_i("report msg to server");
+			//rc = IOT_Template_JSON_ConstructReportArray(client, sg_data_report_buffer, sg_data_report_buffersize, ReportCont, pReportDataList);
+			if (rc == QCLOUD_RET_SUCCESS) 
+			{
+				//ESP_LOGI(TAG, "IOT_Template_JSON_ConstructReportArray");
+				//rc = IOT_Template_Report(client, sg_data_report_buffer, sg_data_report_buffersize, 
+				//							OnReportReplyCallback, NULL, QCLOUD_IOT_MQTT_COMMAND_TIMEOUT);
+				if (rc == QCLOUD_RET_SUCCESS) 
+				{
+				
+					Log_i("data template reporte success");
+				} 
+				else 
+				{
+					Log_e("data template reporte failed, err: %d", rc);
+				}
+			} 
+			else 
+			{
+				Log_e("construct reporte data failed, err: %d", rc);
+			}
+	
+		}
+		memset (JsonDoc,0,sizeof(JsonDoc));
+		HAL_Snprintf(JsonDoc,sizeof(JsonDoc),up_curtainPosition,QCLOUD_PRODUCT_ID,sg_count++,10);
+		Log_i( "publish_to_ota_topic_info: %s", JsonDoc);
+		publish_to_upstream_topic_info(client,  JsonDoc);
+		HAL_SleepMs(2000);
+    } while (1);
 
     IOT_MQTT_Destroy(&client);
 }
@@ -279,7 +567,7 @@ void qcloud_example_task(void* parm)
         uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, true, false, portMAX_DELAY);
 
         if (uxBits & CONNECTED_BIT) {
-            ESP_LOGI(TAG, "WiFi Connected to ap");
+            Log_i("WiFi Connected to ap");
             qcloud_mqtt_demo();
             vTaskDelete(NULL);
         }
@@ -300,8 +588,8 @@ static void wifi_connection(void)
 	size=sizeof(wifi_config.sta.password);
 	dooya_get_wifi_password_from_flash((char *)wifi_config.sta.password,size);
 	
-	ESP_LOGI(TAG, "Setting WiFi configuration SSID %s ...", wifi_config.sta.ssid);
-	ESP_LOGI(TAG, "Setting WiFi configuration password %s...", wifi_config.sta.password);
+	Log_i("Setting WiFi configuration SSID %s ...", wifi_config.sta.ssid);
+	Log_i("Setting WiFi configuration password %s...", wifi_config.sta.password);
 	ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
 
 	esp_wifi_connect();
@@ -310,23 +598,41 @@ static void wifi_connection(void)
 
 static esp_err_t event_handler(void* ctx, system_event_t* event)
 {
-    ESP_LOGI(TAG, "event = %d", event->event_id);
-
+    Log_i("event = %d", event->event_id);
+	uint32_t status=0;
+	if(-1==dooya_get_ota_flag_from_flash(&status))
+	{
+		status=0;
+	}
+	Log_i("event_handler status = %d", status);
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_START:
-            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_START");
-            xTaskCreate(qcloud_example_task, "qcloud_example_task", 1024*5, NULL, 3, NULL);
+            Log_i("SYSTEM_EVENT_STA_START");
+			if(status==0)
+			{
+				xTaskCreate(qcloud_example_task, "qcloud_example_task", 1024*5, NULL, 3, NULL);
+			}
             wifi_connection();
             break;
 
         case SYSTEM_EVENT_STA_GOT_IP:
-            ESP_LOGI(TAG, "Got IPv4[%s]", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
-            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+            Log_i("Got IPv4[%s]", ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
+			if(status==0)
+			{
+				xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+			}
+            else
+            {
+            	 dooya_create_ota_thread();
+            }
             break;
 
         case SYSTEM_EVENT_STA_DISCONNECTED:
-            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_DISCONNECTED");
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+            Log_i("SYSTEM_EVENT_STA_DISCONNECTED");
+			if(status==0)
+			{
+				 xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+			}
             esp_wifi_connect();
             break;
 

@@ -18,14 +18,13 @@
 
 #define tag_flag "sun"
 
-char QCLOUD_DEVICE_NAME[30];      
-char QCLOUD_DEVICE_SECRET[30]; 
-char QCLOUD_PRODUCT_ID[30];   
+char QCLOUD_PRODUCT_ID[MAX_SIZE_OF_PRODUCT_ID+1];      
+char QCLOUD_DEVICE_NAME[MAX_SIZE_OF_PRODUCT_SECRET+1];      
+char QCLOUD_DEVICE_SECRET[MAX_SIZE_OF_DEVICE_SECRET+1];  
 
 static int32_t dooya_get_tree_tuple_from_flash(void)
 {
 	nvs_handle handle_1;
-	size_t read_len = 0;
 	size_t len_tmp;
 	esp_err_t ret = nvs_open_from_partition(MFG_PARTITION_NAME, tree_tuple, NVS_READONLY, &handle_1);
 	if (ret != ESP_OK)

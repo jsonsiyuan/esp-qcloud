@@ -18,8 +18,8 @@
 
 void app_main()
 {
-	char wifi_ssid[32]={0};    
-	char  wifi_password[64]={0}; 
+	char wifi_ssid[32+1]={0};    
+	char  wifi_password[64+1]={0}; 
 	uint8_t device_status=0;
 	ESP_ERROR_CHECK(nvs_flash_init());
 #if 0

@@ -22,6 +22,8 @@ int32_t dooya_set_wifi_FAC(void);
 
 int32_t dooya_set_ota_number_to_flash(uint32_t status);
 int32_t dooya_get_ota_number_from_flash(uint32_t *status);
+int32_t dooya_set_ota_flag_to_flash(uint32_t status);
+int32_t dooya_get_ota_flag_from_flash(uint32_t *status);
 
 
 
