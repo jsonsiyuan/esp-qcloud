@@ -1,6 +1,7 @@
 #include "device_uart_recv_handle.h"
 #include "device_uart.h"
 #include "device_info.h"
+#include "device_fac.h"
 
 
 
@@ -207,7 +208,7 @@ void dooya_notice_handle(uint8_t *payload_msg,uint8_t msg_len)
 			
 		break;
 		case NOTICE_TO_FAC_MODEL:
-			//dooya_fac_set();
+			dooya_fac_set();
 		break;
 
 

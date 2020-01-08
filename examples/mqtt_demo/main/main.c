@@ -12,6 +12,7 @@
 #include "tc_iot_wifi_boarding_esp8266.h"
 #include "device_flash.h"
 #include "device_main.h"
+#include "device_fac.h"
 
 #define tag_flag "sun"
 
@@ -23,9 +24,12 @@ void app_main()
 	uint8_t device_status=0;
 	ESP_ERROR_CHECK(nvs_flash_init());
 #if 0
+	dooya_fac_start();
 
 #else
 	dooya_qcloud_init();
+    /*启动灯和按键*/
+	
 	ESP_LOGI(tag_flag, " tree tuple is %s,%s,%s",QCLOUD_DEVICE_NAME,QCLOUD_DEVICE_SECRET,QCLOUD_PRODUCT_ID);
 	 if(!dooya_get_wifi_status_from_flash(&device_status))
 	 {
@@ -34,6 +38,7 @@ void app_main()
 			case D_WIFI_FAC:
 				ESP_LOGI(tag_flag, "D_WIFI_FAC");
 				dooya_set_wifi_STA();
+				dooya_fac_start();
 			break;
 			case D_WIFI_SOFTAP:
 				ESP_LOGI(tag_flag, "D_WIFI_SOFTAP");
@@ -47,7 +52,7 @@ void app_main()
 				{
 					if(!dooya_get_wifi_password_from_flash(wifi_password,sizeof(wifi_password)))
 					{
-						//没有网络相关信息
+						//有网络相关信息
 						ESP_LOGI(tag_flag, "satrt esp32_wifi_initialise");
 						esp32_wifi_initialise();
 					}
