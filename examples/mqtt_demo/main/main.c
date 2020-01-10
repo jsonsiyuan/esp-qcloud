@@ -75,8 +75,18 @@ void app_main()
 		dooya_set_wifi_STA();
 		start_softAP("dooya", "12345678");
 	 }
+	uint32_t status=0;
+	if(-1==dooya_get_ota_flag_from_flash(&status))
+	{
+		status=0;
+	}
 	 while(1)
 	 {
+		vTaskDelay(30000/portTICK_RATE_MS);
+	 	if((esp_get_free_heap_size()>5500)&&(status))
+	 	{
+	 		esp_restart();
+	 	}
 		ESP_LOGI(tag_flag, "free_heap is [%d]",esp_get_free_heap_size());
 		vTaskDelay(3000/portTICK_RATE_MS);
 	 }

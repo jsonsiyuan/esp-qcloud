@@ -217,7 +217,7 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 	uint32_t offset_tmp=0;
 	uint32_t offset_all=0;
 
-	static int test_number = 0;
+	//static int test_number = 0;
 	
 	char ota_JsonDoc[254] = {0};
 	char *ota_v=NULL;
@@ -242,14 +242,14 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
         Log_i( "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
     }
     Log_i( "Running partition type %d subtype %d (offset 0x%08x)",running->type, running->subtype, running->address);
-	*/
+	
 	test_number++;
 	if(test_number>3)
 	{
 		 dooya_set_ota_number_to_flash(0);
 		 dooya_set_ota_flag_to_flash(0);
 		 esp_restart();
-	}
+	}*/
 	if (IOT_OTA_IsFetching(h_ota)) 
 	{
 		Log_i("IOT_OTA_IsFetching enter");
@@ -462,7 +462,7 @@ static void qcloud_ota_task(void* parm)
 void dooya_create_ota_thread(void)
 {
 	Log_i("sun start OTA\r\n");	
-	xTaskCreate(qcloud_ota_task, "OTA_task", 1024*6, NULL, 3, NULL);
+	xTaskCreate(qcloud_ota_task, "OTA_task", 1024*5, NULL, 3, NULL);
 }
 
 
