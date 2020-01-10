@@ -369,6 +369,17 @@ int IOT_OTA_GetSize(void *handle, uint32_t *sizefile_len)
 	return 0;
 }
 
+char* IOT_OTA_MD5(void *handle)
+{
+	OTA_Struct_t *h_ota = (OTA_Struct_t *) handle;
+	return h_ota->md5sum;
+}
+char* IOT_OTA_version(void *handle)
+{
+	OTA_Struct_t *h_ota = (OTA_Struct_t *) handle;
+	return h_ota->version;
+}
+
 int IOT_OTA_ReportVersion(void *handle, const char *version)
 {
 #define MSG_INFORM_LEN  (128)

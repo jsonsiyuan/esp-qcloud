@@ -20,10 +20,11 @@
 #include "esp_partition.h"
 
 
-
+#include "mqtt_client.h"
 #include "qcloud_iot_export.h"
 #include "qcloud_iot_import.h"
 #include "lite-utils.h"
+#include "ota_lib.h"
 
 
 #include "device_flash.h"
@@ -35,10 +36,12 @@
 
 
 
+void *client=NULL;
 
 #define OTA_BUF_LEN (1024+1)
 char buf_ota[OTA_BUF_LEN];
 
+#define ota_progress ("{\"type\": \"report_progress\", \"report\": {\"progress\": {\"state\":\"downloading\", \"percent\":\"%d\", \"result_code\":\"0\", \"result_msg\":\"\"}, \"version\": \"%s\"}}")
 
 static bool sg_pub_ack = false;
 static int sg_packet_id = 0;
@@ -124,7 +127,7 @@ static int _setup_connect_init_params(MQTTInitParams* initParams)
 static void dooya_qcloud_ota_all(  void )
 {
 	int rc;
-	void *client=NULL;
+	
 
 	MQTTInitParams init_params = DEFAULT_MQTTINIT_PARAMS;
 	rc = _setup_connect_init_params(&init_params);
@@ -178,20 +181,50 @@ static void dooya_qcloud_ota_all(  void )
 	
 
 }
+static int publish_to_ota_progress_topic_info(void* client,  char *pJsonDoc)
+{
+
+
+	char topic[MAX_SIZE_OF_CLOUD_TOPIC] = {0};
+	int size;
+
+
+	size = HAL_Snprintf(topic, MAX_SIZE_OF_CLOUD_TOPIC, "$ota/report/%s/%s",QCLOUD_PRODUCT_ID, QCLOUD_DEVICE_NAME);	
+
+	if (size < 0 || size > MAX_SIZE_OF_CLOUD_TOPIC - 1)
+	{
+	Log_e("buf size < topic length!");
+	IOT_FUNC_EXIT_RC(QCLOUD_ERR_FAILURE);
+	}
+
+	PublishParams pubParams = DEFAULT_PUB_PARAMS;
+	pubParams.qos = QOS0;
+	pubParams.payload_len = strlen(pJsonDoc);
+	pubParams.payload = (char *) pJsonDoc;
+	IOT_FUNC_EXIT_RC(IOT_MQTT_Publish(client, topic, &pubParams));
+}
+
 
 static int32_t dooya_qcloud_ota_deal(void *pclient)
 {
 	
 	bool upgrade_fetch_success = true;
-	int len;
+	int len=0;
+	int i=0;
 	static int ota_over = 0;
 	uint32_t size_file=0;
 	uint32_t offset = 0;
 	uint32_t offset_tmp=0;
 	uint32_t offset_all=0;
-	
+
 	static int test_number = 0;
-	//char buf_ota_tmp[2];
+	
+	char ota_JsonDoc[254] = {0};
+	char *ota_v=NULL;
+	char *pmd5=NULL;
+	char *new_pmd5=NULL;
+	char md5_local[33]={0};
+	int ota_len=0;
 	int rc;
 	esp_err_t err;
 	const esp_partition_t *update_partition = NULL;
@@ -230,13 +263,12 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 		offset_tmp=offset/SPI_FLASH_SEC_SIZE;
 		offset_tmp=offset_tmp*SPI_FLASH_SEC_SIZE;
 
-
-
-		//getFwOffset
-		//cal file md5
-
 		//set offset and start http connect	
 		IOT_OTA_GetSize(h_ota,&size_file);
+		pmd5= IOT_OTA_MD5(h_ota);
+		ota_v=IOT_OTA_version(h_ota);
+		
+		//Log_i("IOT_OTA_MD5 is %s",pmd5);	
 		//HTTP get
 		Log_i("ota all is [%d]",size_file);
 		rc = IOT_OTA_StartDownload(h_ota, offset_tmp, size_file);
@@ -287,9 +319,17 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 				Log_i("flash data len is [%x][%x]\r\n",buf_ota_tmp[0],buf_ota_tmp[1]);
 				*/
 
+
 				offset_tmp+=len;
-				
 				Log_i("offset data len is [%d]\r\n",offset_tmp);
+				
+				//上报一下状态
+				memset (ota_JsonDoc,0,sizeof(ota_JsonDoc));
+				HAL_Snprintf(ota_JsonDoc,sizeof(ota_JsonDoc),ota_progress,offset_tmp*100/size_file,ota_v);
+				//Log_i( "publish_to_ota_topic_info: %s", ota_JsonDoc);
+				publish_to_ota_progress_topic_info(client,  ota_JsonDoc);
+
+				
 				dooya_set_ota_number_to_flash(offset_tmp);
 					
 					
@@ -311,8 +351,49 @@ static int32_t dooya_qcloud_ota_deal(void *pclient)
 		Log_i("while over\r\n",len);	
 
 	    // Must check MD5 match or not
-
-		ota_over = 1;
+	    //2.重新计算
+	    //3.比较
+	    //4.改变
+	    
+		new_pmd5=qcloud_otalib_md5_init();
+			
+		if(new_pmd5!=NULL)
+		{
+			//Log_i("new_pmd5 is not null\r\n");
+			for(i=0;i<size_file;)
+			{	
+				ota_len=(size_file-i)>1024? 1024:(size_file-i);
+				//Log_i("ota_len is %d",ota_len);
+				memset(buf_ota,0,sizeof(buf_ota));
+				err=spi_flash_read(update_partition->address + i, buf_ota,ota_len );
+				if(err==0)
+				{	
+					qcloud_otalib_md5_update(new_pmd5, buf_ota,ota_len);
+					i+=ota_len;
+					//Log_i("i is %d",i);
+				}
+				
+			}
+			qcloud_otalib_md5_finalize(new_pmd5, md5_local);
+			Log_i("md5_local is %s",md5_local);	
+			qcloud_otalib_md5_deinit(new_pmd5);
+			if(!strcmp(md5_local,pmd5))
+			{
+				ota_over = 1;
+			}
+			else
+			{
+				dooya_set_ota_number_to_flash(0);
+				esp_restart();
+			}
+		}
+		else
+		{
+			Log_i("qcloud_otalib_md5_init fail");
+			esp_restart();
+		}
+		
+		
 		
 	}
 	//err = esp_ota_set_boot_partition(update_partition);
@@ -381,7 +462,7 @@ static void qcloud_ota_task(void* parm)
 void dooya_create_ota_thread(void)
 {
 	Log_i("sun start OTA\r\n");	
-	xTaskCreate(qcloud_ota_task, "OTA_task", 1024*8, NULL, 3, NULL);
+	xTaskCreate(qcloud_ota_task, "OTA_task", 1024*6, NULL, 3, NULL);
 }
 
 
